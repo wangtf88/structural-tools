@@ -1,0 +1,96 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #0066cc;
+    --secondary-color: #f0f2f6;
+    /* Use Streamlit's native variables for adaptability */
+    --card-bg: var(--secondary-background-color);
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --border-radius: 0.5rem;
+}
+
+/* Global Styles */
+html,
+body,
+[class*="css"] {
+    font-family: 'Inter', sans-serif;
+    /* color inherited from Streamlit defaults */
+}
+
+/* Header Styling */
+.main-header {
+    background: linear-gradient(135deg, var(--primary-color), #0052a3);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    color: white;
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.main-header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+    color: white;
+    /* Force white text */
+}
+
+.main-header p {
+    font-size: 1rem;
+    margin: 0.5rem 0 0 0;
+    opacity: 0.9;
+}
+
+/* Metric Cards */
+[data-testid="stMetric"] {
+    background-color: var(--card-bg);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    border: 1px solid #e0e0e0;
+}
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    /* bg color inherited from theme */
+    border-right: 1px solid var(--text-color);
+    /* or remove border entirely if preferred */
+}
+
+/* Tabs Styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 1rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 3rem;
+    white-space: pre-wrap;
+    background-color: var(--card-bg);
+    /* Use theme-aware variable */
+    border-radius: var(--border-radius);
+    gap: 1;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+/* Plotly/Chart Container */
+.element-container iframe {
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+}
+
+/* Custom Card Container (for grouping) */
+.css-card {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1rem;
+}

@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beam Design Calculator</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --border: #dbe3f1;
+      --ok: #166534;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 6px 20px rgba(17, 24, 39, 0.05);
+    }
+    h1 { margin-top: 0; font-size: 1.55rem; }
+    .sub { color: var(--muted); margin-top: -0.25rem; }
+    .grid {
+      display: grid;
+      gap: 0.9rem;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    }
+    label { font-size: 0.87rem; color: var(--muted); display: block; margin-bottom: 0.25rem; }
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.95rem;
+    }
+    .actions { margin-top: 1rem; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 0.9rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .primary { background: var(--accent); color: white; }
+    .ghost { background: #eef2ff; color: #1e3a8a; }
+    .results {
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      background: #fbfdff;
+    }
+    .metric h3 { margin: 0; font-size: 0.83rem; color: var(--muted); font-weight: 600; }
+    .metric p { margin: 0.4rem 0 0; font-size: 1.2rem; font-weight: 700; }
+    .note {
+      margin-top: 1rem;
+      font-size: 0.86rem;
+      color: var(--ok);
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 0.6rem;
+    }
+    .warn {
+      margin-top: 0.75rem;
+      font-size: 0.86rem;
+      color: #92400e;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 0.6rem;
+      display: none;
+    }
+    .diagram-wrap {
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 0.8rem;
+    }
+    .diagram {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 0.6rem;
+    }
+    .diagram h3 {
+      margin: 0 0 0.4rem;
+      color: var(--muted);
+      font-size: 0.83rem;
+      font-weight: 600;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      background: #fcfdff;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>Beam Design Calculator (ULS Flexure)</h1>
+      <p class="sub">Quick estimate for a simply supported reinforced concrete beam under UDL.</p>
+
+      <div class="grid">
+        <div>
+          <label for="span">Beam span, L (m)</label>
+          <input id="span" type="number" value="6" step="0.1" min="0.1" />
+        </div>
+        <div>
+          <label for="load">Factored UDL, w (kN/m)</label>
+          <input id="load" type="number" value="15" step="0.1" min="0" />
+        </div>
+        <div>
+          <label for="b">Beam width, b (mm)</label>
+          <input id="b" type="number" value="300" step="5" min="100" />
+        </div>
+        <div>
+          <label for="h">Overall depth, h (mm)</label>
+          <input id="h" type="number" value="550" step="5" min="150" />
+        </div>
+        <div>
+          <label for="cover">Concrete cover (mm)</label>
+          <input id="cover" type="number" value="30" step="1" min="10" />
+        </div>
+        <div>
+          <label for="linkDia">Stirrup dia (mm)</label>
+          <input id="linkDia" type="number" value="8" step="1" min="6" />
+        </div>
+        <div>
+          <label for="barDia">Main bar dia (mm)</label>
+          <input id="barDia" type="number" value="20" step="1" min="8" />
+        </div>
+        <div>
+          <label for="fy">Steel yield strength, fy (MPa)</label>
+          <input id="fy" type="number" value="500" step="10" min="250" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="calcBtn">Calculate</button>
+        <button class="ghost" id="resetBtn">Reset defaults</button>
+      </div>
+
+      <div id="warn" class="warn"></div>
+
+      <div class="results">
+        <article class="metric">
+          <h3>Max design moment, M<sub>Ed</sub></h3>
+          <p id="mEd">-</p>
+        </article>
+        <article class="metric">
+          <h3>Support shear, V<sub>Ed</sub></h3>
+          <p id="vEd">-</p>
+        </article>
+        <article class="metric">
+          <h3>Effective depth, d</h3>
+          <p id="dEff">-</p>
+        </article>
+        <article class="metric">
+          <h3>Lever arm (0.95d)</h3>
+          <p id="zEff">-</p>
+        </article>
+        <article class="metric">
+          <h3>Required steel area, A<sub>s,req</sub></h3>
+          <p id="asReq">-</p>
+        </article>
+        <article class="metric">
+          <h3>Minimum steel check (0.13% b·d)</h3>
+          <p id="asMin">-</p>
+        </article>
+        <article class="metric">
+          <h3>Provide steel area, A<sub>s,prov</sub></h3>
+          <p id="asProv">-</p>
+        </article>
+        <article class="metric">
+          <h3>Bar suggestion</h3>
+          <p id="barSuggestion">-</p>
+        </article>
+      </div>
+
+      <div class="diagram-wrap">
+        <article class="diagram">
+          <h3>Beam Diagram (UDL + supports)</h3>
+          <canvas id="beamDiagram" width="500" height="190"></canvas>
+        </article>
+        <article class="diagram">
+          <h3>Section Diagram (indicative reinforcement)</h3>
+          <canvas id="sectionDiagram" width="500" height="190"></canvas>
+        </article>
+      </div>
+
+      <p class="note">For conceptual sizing only. Final design must be code-checked (flexure, shear, deflection, crack width, anchorage, detailing, and load combinations).</p>
+    </section>
+  </main>
+
+  <script>
+    const ids = ["span","load","b","h","cover","linkDia","barDia","fy"];
+    const defaults = { span: 6, load: 15, b: 300, h: 550, cover: 30, linkDia: 8, barDia: 20, fy: 500 };
+
+    const getVal = (id) => parseFloat(document.getElementById(id).value);
+    const setTxt = (id, text) => { document.getElementById(id).textContent = text; };
+
+    function format(num, digits = 2) {
+      return Number.isFinite(num) ? num.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits }) : "-";
+    }
+
+    function areaBar(dia) {
+      return Math.PI * dia * dia / 4; // mm2
+    }
+
+    function suggestBars(asTarget, dia) {
+      const a1 = areaBar(dia);
+      const n = Math.max(2, Math.ceil(asTarget / a1));
+      return { n, asProv: n * a1 };
+    }
+
+    function drawArrow(ctx, x1, y1, x2, y2, color = "#334155") {
+      const head = 6;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const angle = Math.atan2(dy, dx);
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(angle - Math.PI / 6), y2 - head * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - head * Math.cos(angle + Math.PI / 6), y2 - head * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawBeamDiagram(span, load) {
+      const c = document.getElementById("beamDiagram");
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      const xL = 45;
+      const xR = c.width - 45;
+      const y = 95;
+
+      // Beam line
+      ctx.strokeStyle = "#1f2937";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(xL, y);
+      ctx.lineTo(xR, y);
+      ctx.stroke();
+
+      // Supports
+      ctx.lineWidth = 1.5;
+      ctx.fillStyle = "#cbd5e1";
+      ctx.beginPath(); // pin support
+      ctx.moveTo(xL, y + 2);
+      ctx.lineTo(xL - 14, y + 26);
+      ctx.lineTo(xL + 14, y + 26);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath(); // roller support
+      ctx.moveTo(xR - 14, y + 22);
+      ctx.lineTo(xR + 14, y + 22);
+      ctx.lineTo(xR, y + 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // UDL arrows
+      ctx.strokeStyle = "#2563eb";
+      ctx.fillStyle = "#2563eb";
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i <= 10; i++) {
+        const x = xL + (i / 10) * (xR - xL);
+        drawArrow(ctx, x, y - 52, x, y - 10, "#2563eb");
+      }
+      ctx.beginPath();
+      ctx.moveTo(xL, y - 52);
+      ctx.lineTo(xR, y - 52);
+      ctx.stroke();
+
+      // Dimension line
+      drawArrow(ctx, xL, y + 52, xR, y + 52, "#475569");
+      drawArrow(ctx, xR, y + 52, xL, y + 52, "#475569");
+
+      ctx.fillStyle = "#334155";
+      ctx.font = "13px Arial";
+      ctx.fillText(`w = ${format(load, 1)} kN/m`, xL + 8, y - 62);
+      ctx.fillText(`L = ${format(span, 2)} m`, (xL + xR) / 2 - 32, y + 70);
+    }
+
+    function drawSectionDiagram(b, h, cover, linkDia, barDia, barCount) {
+      const c = document.getElementById("sectionDiagram");
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      const sx = 65;
+      const sy = 18;
+      const drawW = 370;
+      const drawH = 145;
+
+      // Concrete outline
+      ctx.strokeStyle = "#1f2937";
+      ctx.fillStyle = "#f1f5f9";
+      ctx.lineWidth = 2;
+      ctx.fillRect(sx, sy, drawW, drawH);
+      ctx.strokeRect(sx, sy, drawW, drawH);
+
+      const sCover = Math.max(10, (cover / Math.max(h, b)) * 70 + 8);
+      const sLink = Math.max(2, linkDia / 2.5);
+      const stirrupInset = sCover;
+
+      // Stirrup
+      ctx.strokeStyle = "#475569";
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = sLink;
+      ctx.strokeRect(sx + stirrupInset, sy + stirrupInset, drawW - 2 * stirrupInset, drawH - 2 * stirrupInset);
+      ctx.setLineDash([]);
+
+      // Bottom bars
+      const n = Math.min(8, Math.max(2, barCount));
+      const yBar = sy + drawH - stirrupInset - 12;
+      const left = sx + stirrupInset + 16;
+      const right = sx + drawW - stirrupInset - 16;
+      const spacing = n === 1 ? 0 : (right - left) / (n - 1);
+      const r = Math.max(4, Math.min(9, barDia / 2.8));
+
+      ctx.fillStyle = "#dc2626";
+      ctx.strokeStyle = "#991b1b";
+      for (let i = 0; i < n; i++) {
+        const x = left + i * spacing;
+        ctx.beginPath();
+        ctx.arc(x, yBar, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Labels
+      ctx.fillStyle = "#334155";
+      ctx.font = "12px Arial";
+      ctx.fillText(`b = ${format(b, 0)} mm`, sx + drawW / 2 - 30, sy + drawH + 18);
+      ctx.save();
+      ctx.translate(24, sy + drawH / 2 + 26);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(`h = ${format(h, 0)} mm`, 0, 0);
+      ctx.restore();
+    }
+
+    function calculate() {
+      const span = getVal("span");
+      const load = getVal("load");
+      const b = getVal("b");
+      const h = getVal("h");
+      const cover = getVal("cover");
+      const linkDia = getVal("linkDia");
+      const barDia = getVal("barDia");
+      const fy = getVal("fy");
+      const warn = document.getElementById("warn");
+      warn.style.display = "none";
+
+      if ([span, load, b, h, cover, linkDia, barDia, fy].some(v => !Number.isFinite(v) || v <= 0)) {
+        warn.textContent = "Please enter positive numeric values for all inputs.";
+        warn.style.display = "block";
+        return;
+      }
+
+      const d = h - cover - linkDia - 0.5 * barDia;
+      if (d <= 0) {
+        warn.textContent = "Effective depth is not valid. Increase h or reduce cover/rebar diameter.";
+        warn.style.display = "block";
+        return;
+      }
+
+      const mEd = load * span * span / 8; // kNm
+      const vEd = load * span / 2; // kN
+      const z = 0.95 * d; // mm
+      const mNmm = mEd * 1e6;
+      const asReq = mNmm / (0.87 * fy * z);
+      const asMin = 0.0013 * b * d;
+      const asDesign = Math.max(asReq, asMin);
+
+      const bars = suggestBars(asDesign, barDia);
+
+      setTxt("mEd", `${format(mEd)} kNm`);
+      setTxt("vEd", `${format(vEd)} kN`);
+      setTxt("dEff", `${format(d)} mm`);
+      setTxt("zEff", `${format(z)} mm`);
+      setTxt("asReq", `${format(asReq, 0)} mm²`);
+      setTxt("asMin", `${format(asMin, 0)} mm²`);
+      setTxt("asProv", `${format(bars.asProv, 0)} mm²`);
+      setTxt("barSuggestion", `${bars.n}T${barDia}`);
+
+      drawBeamDiagram(span, load);
+      drawSectionDiagram(b, h, cover, linkDia, barDia, bars.n);
+    }
+
+    document.getElementById("calcBtn").addEventListener("click", calculate);
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      ids.forEach(id => document.getElementById(id).value = defaults[id]);
+      calculate();
+    });
+
+    calculate();
+  </script>
+</body>
+</html>

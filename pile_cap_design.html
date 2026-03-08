@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pile Cap Design Calculator (Eurocode 2)</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --primary: #0f766e;
+      --accent: #1d4ed8;
+      --ok: #166534;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --line: #dbe4ef;
+    }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1200px; margin: 20px auto; padding: 0 16px; }
+    h1 { margin-bottom: 4px; }
+    .subtitle { color: var(--muted); margin-top: 0; }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+    .panel h2 { font-size: 18px; margin: 0 0 8px; }
+    .sec-title { font-size: 14px; margin: 12px 0 6px; color: var(--accent); font-weight: 700; }
+    .row { display: grid; grid-template-columns: 1fr 110px; gap: 8px; margin-bottom: 8px; align-items: center; }
+    label { font-size: 13px; }
+    input, select, button { width: 100%; padding: 7px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+    button { background: var(--primary); border: none; color: #fff; font-weight: 700; cursor: pointer; padding: 10px; }
+    button:hover { filter: brightness(0.95); }
+    .outputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .metric { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+    .metric .name { font-size: 12px; color: var(--muted); }
+    .metric .val { font-size: 20px; font-weight: 700; }
+    .status-ok { color: var(--ok); }
+    .status-warn { color: var(--warn); }
+    .status-bad { color: var(--bad); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 6px; text-align: center; }
+    th { background: #eff6ff; }
+    .footnote { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr; }
+      .outputs { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Pile Cap Design Calculator (Eurocode 2)</h1>
+    <p class="subtitle">Beam theory + strut-and-tie (STM) for preliminary sizing to EN 1992-1-1.</p>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Inputs</h2>
+
+        <div class="sec-title">Material</div>
+        <div class="row"><label for="fck">Concrete fck (MPa)</label><select id="fck"><option>20</option><option>25</option><option selected>30</option><option>35</option><option>40</option><option>45</option><option>50</option></select></div>
+        <div class="row"><label for="fyk">Steel fyk (MPa)</label><select id="fyk"><option>400</option><option selected>500</option></select></div>
+
+        <div class="sec-title">Pile Layout & Geometry (mm)</div>
+        <div class="row"><label for="nx">No. piles in X</label><input id="nx" type="number" value="2" min="1" max="6"></div>
+        <div class="row"><label for="ny">No. piles in Y</label><input id="ny" type="number" value="2" min="1" max="6"></div>
+        <div class="row"><label for="sx">Spacing sx (mm)</label><input id="sx" type="number" value="1800" min="300"></div>
+        <div class="row"><label for="sy">Spacing sy (mm)</label><input id="sy" type="number" value="1800" min="300"></div>
+        <div class="row"><label for="h">Cap depth h (mm)</label><input id="h" type="number" value="900" min="400"></div>
+        <div class="row"><label for="cover">Cover (mm)</label><input id="cover" type="number" value="75" min="40"></div>
+        <div class="row"><label for="barDia">Main bar dia (mm)</label><select id="barDia"><option>12</option><option>16</option><option selected>20</option><option>25</option><option>32</option></select></div>
+
+        <div class="sec-title">Column & Actions</div>
+        <div class="row"><label for="cx">Column cx (mm)</label><input id="cx" type="number" value="500" min="200"></div>
+        <div class="row"><label for="cy">Column cy (mm)</label><input id="cy" type="number" value="500" min="200"></div>
+        <div class="row"><label for="nEd">Design axial load NEd (kN)</label><input id="nEd" type="number" value="6000" min="100"></div>
+
+        <div class="sec-title">Provided Reinforcement</div>
+        <div class="row"><label for="nBarsX">Bars in X direction</label><input id="nBarsX" type="number" value="10" min="2"></div>
+        <div class="row"><label for="nBarsY">Bars in Y direction</label><input id="nBarsY" type="number" value="10" min="2"></div>
+
+        <button id="calcBtn">Calculate</button>
+      </div>
+
+      <div class="panel">
+        <h2>Results</h2>
+        <div class="outputs">
+          <div>
+            <h3>Beam Theory</h3>
+            <div class="metric"><div class="name">Pile reaction per pile</div><div id="b_npile" class="val">-</div></div>
+            <div class="metric"><div class="name">MEd,x (kNm)</div><div id="b_mx" class="val">-</div></div>
+            <div class="metric"><div class="name">MEd,y (kNm)</div><div id="b_my" class="val">-</div></div>
+            <div class="metric"><div class="name">As,req,x (mm²)</div><div id="b_asx" class="val">-</div></div>
+            <div class="metric"><div class="name">As,req,y (mm²)</div><div id="b_asy" class="val">-</div></div>
+            <div class="metric"><div class="name">VRdc,x / VEd,x (kN)</div><div id="b_vx" class="val">-</div></div>
+            <div class="metric"><div class="name">VRdc,y / VEd,y (kN)</div><div id="b_vy" class="val">-</div></div>
+          </div>
+          <div>
+            <h3>Strut-and-Tie (STM)</h3>
+            <div class="metric"><div class="name">Strut angle θ (deg)</div><div id="s_th" class="val">-</div></div>
+            <div class="metric"><div class="name">Strut compression force (kN)</div><div id="s_fs" class="val">-</div></div>
+            <div class="metric"><div class="name">Tie force Tx (kN)</div><div id="s_tx" class="val">-</div></div>
+            <div class="metric"><div class="name">Tie force Ty (kN)</div><div id="s_ty" class="val">-</div></div>
+            <div class="metric"><div class="name">As,req,x (mm²)</div><div id="s_asx" class="val">-</div></div>
+            <div class="metric"><div class="name">As,req,y (mm²)</div><div id="s_asy" class="val">-</div></div>
+            <div class="metric"><div class="name">σRd,max node (MPa)</div><div id="s_sig" class="val">-</div></div>
+          </div>
+        </div>
+
+        <h3>Governing Reinforcement Check</h3>
+        <table>
+          <thead>
+            <tr><th>Direction</th><th>As req (governing, mm²)</th><th>As provided (mm²)</th><th>Status</th></tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+
+        <h3 style="margin-top:12px;">Pile Coordinates (mm)</h3>
+        <table>
+          <thead><tr><th>Pile</th><th>x</th><th>y</th></tr></thead>
+          <tbody id="coordsBody"></tbody>
+        </table>
+
+        <p class="footnote">Calculator is for preliminary sizing only. Final design must include punching shear, detailing, anchorage/lap, and geotechnical verification.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const g = (id) => document.getElementById(id);
+    const num = (id) => Number(g(id).value);
+    const fmt = (v, d = 1) => Number(v).toFixed(d);
+
+    function steelArea(dia) { return Math.PI * dia * dia / 4.0; }
+
+    function pileCoordinates(nx, ny, sx, sy) {
+      const xs = Array.from({ length: nx }, (_, i) => (i - (nx - 1) / 2) * sx);
+      const ys = Array.from({ length: ny }, (_, j) => (j - (ny - 1) / 2) * sy);
+      const coords = [];
+      for (const y of ys) for (const x of xs) coords.push({ x, y });
+      return coords;
+    }
+
+    function beamTheory(coords, nEd, cx, cy, d, fck, fyk, gammaC = 1.5, gammaS = 1.15) {
+      const fyd = fyk / gammaS;
+      const nPile = nEd / coords.length;
+      const mEdX = coords.reduce((s, c) => s + nPile * Math.max(Math.abs(c.x) - cx / 2, 0) / 1000, 0);
+      const mEdY = coords.reduce((s, c) => s + nPile * Math.max(Math.abs(c.y) - cy / 2, 0) / 1000, 0);
+      const z = Math.min(0.95 * d, 0.9 * d);
+      const asReqX = mEdX > 0 ? (mEdX * 1e6) / (fyd * z) : 0;
+      const asReqY = mEdY > 0 ? (mEdY * 1e6) / (fyd * z) : 0;
+
+      const vEdX = coords.filter(c => Math.abs(c.x) > cx / 2).length * nPile;
+      const vEdY = coords.filter(c => Math.abs(c.y) > cy / 2).length * nPile;
+
+      const cRdc = 0.18 / gammaC;
+      const k = Math.min(1 + Math.sqrt(200 / d), 2);
+
+      const vrdc = (b, asReq) => {
+        const rho = b * d > 0 ? Math.min(asReq / (b * d), 0.02) : 0;
+        const vMin = 0.035 * Math.pow(k, 1.5) * Math.sqrt(fck);
+        const vRdcMpa = Math.max(cRdc * k * Math.pow(100 * rho * fck, 1 / 3), vMin);
+        return vRdcMpa * b * d / 1000;
+      };
+
+      return {
+        nPile, mEdX, mEdY, asReqX, asReqY,
+        vEdX, vEdY,
+        vRdcX: vrdc(Math.max(cy, 1), asReqX),
+        vRdcY: vrdc(Math.max(cx, 1), asReqY)
+      };
+    }
+
+    function stm(nx, ny, sx, sy, d, nEd, fck, fyk, gammaC = 1.5, gammaS = 1.15) {
+      const fcd = 0.85 * fck / gammaC;
+      const fyd = fyk / gammaS;
+      const nPiles = nx * ny;
+      const nPile = nEd / nPiles;
+
+      const hx = (nx - 1) * sx / 2;
+      const hy = (ny - 1) * sy / 2;
+      const r = Math.sqrt(hx * hx + hy * hy);
+      const theta = r <= 0 ? Math.PI / 2 : Math.atan(d / r);
+      const strutForce = nPile / Math.max(Math.sin(theta), 1e-9);
+
+      const tieX = nEd * hx / Math.max(d, 1e-9);
+      const tieY = nEd * hy / Math.max(d, 1e-9);
+
+      const asReqX = tieX * 1e3 / fyd;
+      const asReqY = tieY * 1e3 / fyd;
+
+      const nu = 0.6 * (1 - fck / 250);
+      const sigmaRdMax = nu * fcd;
+
+      return { thetaDeg: theta * 180 / Math.PI, strutForce, tieX, tieY, asReqX, asReqY, sigmaRdMax };
+    }
+
+    function setStatusCell(asReq, asProv) {
+      if (asProv >= asReq) return '<span class="status-ok">OK</span>';
+      if (asProv >= 0.9 * asReq) return '<span class="status-warn">Near - increase bars</span>';
+      return '<span class="status-bad">Increase bars</span>';
+    }
+
+    function calculate() {
+      const fck = num('fck');
+      const fyk = num('fyk');
+      const nx = Math.trunc(num('nx'));
+      const ny = Math.trunc(num('ny'));
+      const sx = num('sx');
+      const sy = num('sy');
+      const h = num('h');
+      const cover = num('cover');
+      const barDia = num('barDia');
+      const cx = num('cx');
+      const cy = num('cy');
+      const nEd = num('nEd');
+      const nBarsX = Math.trunc(num('nBarsX'));
+      const nBarsY = Math.trunc(num('nBarsY'));
+
+      const d = h - cover - barDia / 2;
+      const coords = pileCoordinates(nx, ny, sx, sy);
+      const b = beamTheory(coords, nEd, cx, cy, d, fck, fyk);
+      const s = stm(nx, ny, sx, sy, d, nEd, fck, fyk);
+
+      g('b_npile').innerText = fmt(b.nPile);
+      g('b_mx').innerText = fmt(b.mEdX);
+      g('b_my').innerText = fmt(b.mEdY);
+      g('b_asx').innerText = fmt(b.asReqX, 0);
+      g('b_asy').innerText = fmt(b.asReqY, 0);
+      g('b_vx').innerText = `${fmt(b.vRdcX, 0)} / ${fmt(b.vEdX, 0)}`;
+      g('b_vy').innerText = `${fmt(b.vRdcY, 0)} / ${fmt(b.vEdY, 0)}`;
+
+      g('s_th').innerText = fmt(s.thetaDeg);
+      g('s_fs').innerText = fmt(s.strutForce);
+      g('s_tx').innerText = fmt(s.tieX);
+      g('s_ty').innerText = fmt(s.tieY);
+      g('s_asx').innerText = fmt(s.asReqX, 0);
+      g('s_asy').innerText = fmt(s.asReqY, 0);
+      g('s_sig').innerText = fmt(s.sigmaRdMax, 2);
+
+      const asProvX = nBarsX * steelArea(barDia);
+      const asProvY = nBarsY * steelArea(barDia);
+      const reqX = Math.max(b.asReqX, s.asReqX);
+      const reqY = Math.max(b.asReqY, s.asReqY);
+
+      g('summaryBody').innerHTML = `
+        <tr><td>X</td><td>${fmt(reqX, 0)}</td><td>${fmt(asProvX, 0)}</td><td>${setStatusCell(reqX, asProvX)}</td></tr>
+        <tr><td>Y</td><td>${fmt(reqY, 0)}</td><td>${fmt(asProvY, 0)}</td><td>${setStatusCell(reqY, asProvY)}</td></tr>
+      `;
+
+      g('coordsBody').innerHTML = coords
+        .map((c, i) => `<tr><td>Pile ${i + 1}</td><td>${fmt(c.x, 0)}</td><td>${fmt(c.y, 0)}</td></tr>`)
+        .join('');
+    }
+
+    g('calcBtn').addEventListener('click', calculate);
+    calculate();
+  </script>
+</body>
+</html>
